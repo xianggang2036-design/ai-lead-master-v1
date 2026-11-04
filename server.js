@@ -1,1 +1,34 @@
-﻿const express = require('express'); const cors = require('cors'); const axios = require('axios'); const { HttpsProxyAgent } = require('https-proxy-agent'); const admin = require('firebase-admin'); const app = express(); app.use(cors()); app.use(express.json()); let db = null; try { if (process.env.FIREBASE_SERVICE_ACCOUNT) { admin.initializeApp({ credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)) }); db = admin.firestore(); console.log('[Firebase] 成功连接至 Firestore'); } } catch (e) { console.error(e.message); } app.get('/', (req, res) => res.send('AI Lead Master V1.0 Ready')); app.all('/api/search/b2b', async (req, res) => { const country = req.method === 'GET' ? (req.query.country || 'UAE') : (req.body.country || 'UAE'); const city = req.method === 'GET' ? (req.query.city || 'Dubai') : (req.body.city || 'Dubai'); const keyword = req.method === 'GET' ? (req.query.keyword || 'Ladies Salon') : (req.body.keyword || 'Ladies Salon'); const limit = req.method === 'GET' ? (parseInt(req.query.limit) || 10) : (req.body.limit || 10); try { const resp = await axios.get(https://nominatim.openstreetmap.org/search?q=&format=json&limit=); const list = []; for (let item of resp.data || []) { const lead = { business_name: item.display_name.split(',')[0], full_address: item.display_name, country, city, category: keyword, created_at: new Date().toISOString() }; if (db) { const ref = await db.collection('lead_manager_leads').add(lead); lead.id = ref.id; } list.push(lead); } res.json({ success: true, count: list.length, data: list }); } catch (err) { res.status(500).json({ success: false, error: err.message }); } }); const PORT = process.env.PORT || 10000; app.listen(PORT, () => console.log('Server running on port ' + PORT));
+﻿const express = require('express');
+const cors = require('cors');
+const axios = require('axios');
+const { HttpsProxyAgent } = require('https-proxy-agent');
+const admin = require('firebase-admin');
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+let db = null;
+try {
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+    db = admin.firestore();
+    console.log('[Firebase] 成功连接 Firestore');
+  } else {
+    console.warn('[Firebase] 未检测到环境变量');
+  }
+} catch (e) {
+  console.error('[Firebase] 连接失败:', e.message);
+}
+
+app.get('/', (req, res) => {
+  res.send('AI Lead Master V1.0 Ready');
+});
+
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => {
+  console.log(Server is running on port );
+});
